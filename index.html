@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ecore – NIRAS Corporate Startup Dashboard</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f3; min-height: 100vh; color: #1a1a1a; }
+  button { font-family: inherit; cursor: pointer; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const R = "#C8102E", RD = "#9B0C22", RL = "#F9E5E8", RM = "#E8A0AC";
+
+const tasks = [
+  { id:1, title:"Materialekortlægning – glasfibervinger", desc:"Kortlæg sammensætning og egenskaber af glasfiberkomposit fra udtjente vindmøllevinger.", hours:40, maxHours:40, applicants:["Anna S.","Peter H."], status:"aktiv", mine:true },
+  { id:2, title:"Procesdesign: termisk depolymerisering", desc:"Design af termisk nedbrydningsproces til separation af glasfiber fra matrix.", hours:20, maxHours:60, applicants:["Lars M."], status:"åben", mine:false },
+  { id:3, title:"Skumglas-integrationstest", desc:"Test af genanvendt glasfiber som tilsætning i skumglasisolering – mekaniske og termiske egenskaber.", hours:0, maxHours:80, applicants:[], status:"åben", mine:false },
+  { id:4, title:"LCA-analyse – cirkulær værdikæde", desc:"Livscyklusanalyse af den cirkulære værdikæde fra vindmøllevinge til skumglasisolering.", hours:55, maxHours:55, applicants:["Mette K.","Jonas R.","Sofie L."], status:"afsluttet", mine:false },
+  { id:5, title:"Markedsanalyse – skumglas EU", desc:"Identificér potentielle aftagere og markedsstørrelse for bæredygtig skumglasisolering i EU.", hours:12, maxHours:30, applicants:["Sofie L."], status:"afventer", mine:false },
+];
+
+const members = [
+  { name:"Anna S.", role:"Materialetekniker", hours:40, max:40, share:8.2 },
+  { name:"Peter H.", role:"Procesrådgiver", hours:40, max:40, share:8.2 },
+  { name:"Lars M.", role:"Kemitekniker", hours:20, max:60, share:4.1 },
+  { name:"Mette K.", role:"Miljørådgiver", hours:55, max:55, share:11.3 },
+  { name:"Jonas R.", role:"Ingeniør", hours:55, max:55, share:11.3 },
+  { name:"Sofie L.", role:"Analytiker", hours:67, max:85, share:13.8 },
+];
+
+const totalShares = members.reduce((s,m) => s+m.share, 0);
+const totalHours = members.reduce((s,m) => s+m.hours, 0);
+
+const statusMeta = {
+  aktiv:    { label:"Aktiv",                bg:"#E8F5E9", color:"#2E7D32" },
+  åben:     { label:"Åben",                 bg:"#E3F2FD", color:"#1565C0" },
+  afventer: { label:"Afventer godkendelse", bg:"#FFF8E1", color:"#F57F17" },
+  afsluttet:{ label:"Afsluttet",            bg:"#F3E5F5", color:"#6A1B9A" },
+};
+
+const initials = n => n.split(" ").map(p=>p[0]).join("");
+
+function App() {
+  const [view, setView] = React.useState("overblik");
+  const [role, setRole] = React.useState("ansat");
+  const [applied, setApplied] = React.useState([]);
+  const [approvals, setApprovals] = React.useState({2:null,5:null});
+  const [selectedTask, setSelectedTask] = React.useState(null);
+
+  const navItems = [
+    {id:"overblik", label:"🏠 Overblik"},
+    {id:"opgaver",  label:"📋 Opgaver"},
+    {id:"ejerandele",label:"📊 Ejerandele"},
+    ...(role==="direktør" ? [{id:"godkend",label:"✅ Godkend"}] : []),
+  ];
+
+  return (
+    <div style={{minHeight:"100vh", background:"#f5f5f3"}}>
+      {/* Header */}
+      <div style={{background:R, padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:56}}>
+        <div style={{display:"flex", alignItems:"center", gap:12}}>
+          <div style={{background:"white", color:R, fontWeight:700, fontSize:13, padding:"4px 10px", borderRadius:4, letterSpacing:1}}>NIRAS</div>
+          <span style={{color:"white", fontWeight:500, fontSize:15}}>Ecore</span>
+          <span style={{color:"rgba(255,255,255,0.6)", fontSize:13}}>Corporate startup</span>
+        </div>
+        <button onClick={()=>setRole(r=>r==="ansat"?"direktør":"ansat")}
+          style={{background:"rgba(255,255,255,0.18)", border:"1px solid rgba(255,255,255,0.35)", color:"white", borderRadius:20, padding:"4px 14px", fontSize:13}}>
+          {role==="ansat"?"👤 Ansat":"🏢 Direktør"}
+        </button>
+      </div>
+
+      {/* Nav */}
+      <div style={{background:"white", borderBottom:"1px solid #e0e0e0", display:"flex", padding:"0 24px", gap:4}}>
+        {navItems.map(n=>(
+          <button key={n.id} onClick={()=>setView(n.id)}
+            style={{padding:"12px 16px", fontSize:14, background:"none", border:"none", borderBottom:view===n.id?`2px solid ${R}`:"2px solid transparent", color:view===n.id?R:"#666", fontWeight:view===n.id?500:400}}>
+            {n.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{padding:"24px", maxWidth:900, margin:"0 auto"}}>
+
+        {/* OVERBLIK */}
+        {view==="overblik" && (
+          <div>
+            <h2 style={{fontSize:20, fontWeight:500, marginBottom:4}}>Ecore – projektdashboard</h2>
+            <p style={{marginBottom:20, fontSize:14, color:"#666"}}>Genanvendelse af glasfiberkomposit fra vindmøllevinger til skumglasisolering</p>
+
+            <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:24}}>
+              {[
+                {label:"Aktive opgaver",  value:tasks.filter(t=>t.status==="aktiv").length},
+                {label:"Åbne opgaver",    value:tasks.filter(t=>t.status==="åben").length},
+                {label:"Timer logget",    value:totalHours+"t"},
+                {label:"Deltagere",       value:members.length},
+              ].map(k=>(
+                <div key={k.label} style={{background:"white", border:"1px solid #e8e8e8", borderRadius:10, padding:"14px 16px"}}>
+                  <div style={{fontSize:12, color:"#888", marginBottom:4}}>{k.label}</div>
+                  <div style={{fontSize:26, fontWeight:500, color:R}}>{k.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{background:"white", border:"1px solid #e8e8e8", borderRadius:10, padding:20, marginBottom:20}}>
+              <div style={{display:"flex", gap:16}}>
+                <div style={{fontSize:32}}>🌀</div>
+                <div>
+                  <h3 style={{fontSize:16, fontWeight:500, marginBottom:8}}>Om projektet</h3>
+                  <p style={{fontSize:14, lineHeight:1.6, color:"#555", marginBottom:10}}>
+                    Ecore udvikler en cirkulær løsning til genanvendelse af glasfiberkomposit fra udtjente vindmøllevinger. Materialet oparbejdes og anvendes som råvare i produktionen af skumglasisolering – en højtydende isoleringsløsning til byggeri.
+                  </p>
+                  <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+                    {["Cirkulær økonomi","Vindmøller","Glasfiber","Isolering","GREENsition"].map(tag=>(
+                      <span key={tag} style={{background:RL, color:RD, fontSize:12, padding:"3px 10px", borderRadius:12}}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{background:"white", border:"1px solid #e8e8e8", borderRadius:10, padding:20}}>
+              <h3 style={{fontSize:15, fontWeight:500, marginBottom:16}}>Milepæle</h3>
+              {[
+                {label:"Fase 1: Materialekortlægning", pct:100, done:true},
+                {label:"Fase 2: Procesudvikling",      pct:60,  done:false},
+                {label:"Fase 3: Produktionstest",      pct:15,  done:false},
+                {label:"Fase 4: Kommercialiseringsstrategi", pct:0, done:false},
+              ].map(m=>(
+                <div key={m.label} style={{marginBottom:14}}>
+                  <div style={{display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:5}}>
+                    <span style={{color:m.done?"#999":"#1a1a1a"}}>{m.done?"✓ ":""}{m.label}</span>
+                    <span style={{color:"#888"}}>{m.pct}%</span>
+                  </div>
+                  <div style={{height:6, background:"#f0f0f0", borderRadius:3}}>
+                    <div style={{height:6, width:`${m.pct}%`, background:m.done?"#4CAF50":R, borderRadius:3}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* OPGAVER */}
+        {view==="opgaver" && (
+          <div>
+            <h2 style={{fontSize:18, fontWeight:500, marginBottom:4}}>Opgaver</h2>
+            <p style={{marginBottom:20, fontSize:14, color:"#666"}}>Meld dig på åbne opgaver og optjen ejerandele via timeregistrering.</p>
+            <div style={{display:"flex", flexDirection:"column", gap:12}}>
+              {tasks.map(t=>{
+                const sm = statusMeta[t.status];
+                const isApplied = applied.includes(t.id)||t.mine;
+                const pct = Math.round((t.hours/t.maxHours)*100);
+                return (
+                  <div key={t.id} style={{background:"white", border:`1px solid ${selectedTask===t.id?R:"#e8e8e8"}`, borderRadius:10, padding:"16px 20px", cursor:"pointer"}}
+                    onClick={()=>setSelectedTask(selectedTask===t.id?null:t.id)}>
+                    <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap"}}>
+                          <span style={{fontWeight:500, fontSize:14}}>{t.title}</span>
+                          <span style={{background:sm.bg, color:sm.color, fontSize:11, padding:"2px 8px", borderRadius:10}}>{sm.label}</span>
+                          {isApplied && <span style={{background:RL, color:R, fontSize:11, padding:"2px 8px", borderRadius:10}}>Tilmeldt</span>}
+                        </div>
+                        {selectedTask===t.id && <p style={{margin:"8px 0", fontSize:13, color:"#666", lineHeight:1.6}}>{t.desc}</p>}
+                        <div style={{fontSize:12, color:"#888"}}>Max {t.maxHours} timer · {t.applicants.length} deltager{t.applicants.length!==1?"e":""}</div>
+                      </div>
+                      <div style={{textAlign:"right", minWidth:80}}>
+                        <div style={{fontSize:20, fontWeight:500, color:R}}>{t.hours}<span style={{fontSize:12, fontWeight:400}}>t</span></div>
+                        <div style={{fontSize:11, color:"#888"}}>af {t.maxHours}t</div>
+                        <div style={{height:4, background:"#f0f0f0", borderRadius:2, marginTop:6}}>
+                          <div style={{height:4, width:`${pct}%`, background:R, borderRadius:2}}/>
+                        </div>
+                      </div>
+                    </div>
+                    {selectedTask===t.id && t.status==="åben" && !isApplied && (
+                      <button onClick={e=>{e.stopPropagation();setApplied(a=>[...a,t.id]);}}
+                        style={{marginTop:12, background:R, color:"white", border:"none", borderRadius:6, padding:"8px 18px", fontSize:13, fontWeight:500}}>
+                        Meld dig på
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* EJERANDELE */}
+        {view==="ejerandele" && (
+          <div>
+            <h2 style={{fontSize:18, fontWeight:500, marginBottom:4}}>Ejerandele</h2>
+            <p style={{marginBottom:20, fontSize:14, color:"#666"}}>Timer omsættes til ejerandele. Total pulje: 100%.</p>
+            {role==="ansat" && (
+              <div style={{background:RL, border:`1px solid ${RM}`, borderRadius:10, padding:"16px 20px", marginBottom:20, display:"flex", gap:24, flexWrap:"wrap"}}>
+                <div><div style={{fontSize:12, color:RD, marginBottom:2}}>Mine timer</div><div style={{fontSize:28, fontWeight:500, color:R}}>40t</div></div>
+                <div><div style={{fontSize:12, color:RD, marginBottom:2}}>Mine ejerandele</div><div style={{fontSize:28, fontWeight:500, color:R}}>8.2%</div></div>
+                <div style={{flex:1, minWidth:120, display:"flex", flexDirection:"column", justifyContent:"center"}}>
+                  <div style={{fontSize:12, color:RD, marginBottom:5}}>Andel af fordelt pulje</div>
+                  <div style={{height:8, background:"rgba(200,16,46,0.15)", borderRadius:4}}>
+                    <div style={{height:8, width:`${(8.2/totalShares)*100}%`, background:R, borderRadius:4}}/>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div style={{background:"white", border:"1px solid #e8e8e8", borderRadius:10, overflow:"hidden"}}>
+              <div style={{padding:"12px 20px", borderBottom:"1px solid #f0f0f0", fontSize:13, fontWeight:500, display:"grid", gridTemplateColumns:"1fr 60px 70px 80px", gap:16, color:"#888"}}>
+                <span>Deltager</span><span>Timer</span><span>Andel</span><span>Progress</span>
+              </div>
+              {members.map((m,i)=>(
+                <div key={m.name} style={{padding:"12px 20px", borderBottom:i<members.length-1?"1px solid #f5f5f5":"none", display:"grid", gridTemplateColumns:"1fr 60px 70px 80px", gap:16, alignItems:"center"}}>
+                  <div style={{display:"flex", alignItems:"center", gap:10}}>
+                    <div style={{width:32, height:32, borderRadius:"50%", background:m.name==="Anna S."?RL:"#f5f5f5", color:m.name==="Anna S."?R:"#888", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:500}}>{initials(m.name)}</div>
+                    <div>
+                      <div style={{fontSize:14, fontWeight:500}}>{m.name}</div>
+                      <div style={{fontSize:12, color:"#888"}}>{m.role}</div>
+                    </div>
+                  </div>
+                  <span style={{fontSize:14}}>{m.hours}t</span>
+                  <span style={{fontSize:14, fontWeight:500, color:R}}>{m.share}%</span>
+                  <div style={{height:6, background:"#f0f0f0", borderRadius:3}}>
+                    <div style={{height:6, width:`${(m.hours/m.max)*100}%`, background:R, borderRadius:3}}/>
+                  </div>
+                </div>
+              ))}
+              <div style={{padding:"12px 20px", background:"#fafafa", display:"grid", gridTemplateColumns:"1fr 60px 70px 80px", gap:16, fontSize:13, fontWeight:500}}>
+                <span style={{color:"#888"}}>Total</span>
+                <span>{totalHours}t</span>
+                <span style={{color:R}}>{totalShares.toFixed(1)}%</span>
+                <span/>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GODKEND */}
+        {view==="godkend" && role==="direktør" && (
+          <div>
+            <h2 style={{fontSize:18, fontWeight:500, marginBottom:4}}>Godkendelse af deltagere</h2>
+            <p style={{marginBottom:20, fontSize:14, color:"#666"}}>Afventer din godkendelse inden deltagerne kan timeregistrere.</p>
+            {[
+              {id:2, name:"Lars M.", task:"Procesdesign: termisk depolymerisering", role:"Kemitekniker", maxH:60},
+              {id:5, name:"Sofie L.", task:"Markedsanalyse – skumglas EU", role:"Analytiker", maxH:30},
+            ].map(req=>{
+              const status = approvals[req.id];
+              return (
+                <div key={req.id} style={{background:"white", border:"1px solid #e8e8e8", borderRadius:10, padding:20, marginBottom:12}}>
+                  <div style={{display:"flex", gap:12, alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap"}}>
+                    <div style={{display:"flex", gap:12}}>
+                      <div style={{width:40, height:40, borderRadius:"50%", background:"#f5f5f5", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:500, color:"#888"}}>{initials(req.name)}</div>
+                      <div>
+                        <div style={{fontWeight:500, fontSize:15}}>{req.name}</div>
+                        <div style={{fontSize:13, color:"#888"}}>{req.role}</div>
+                        <div style={{fontSize:13, marginTop:4}}>Opgave: {req.task}</div>
+                        <div style={{fontSize:13, color:"#888"}}>Max timer ansøgt: {req.maxH}t</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex", gap:8}}>
+                      {status===null ? (
+                        <>
+                          <button onClick={()=>setApprovals(a=>({...a,[req.id]:"godkendt"}))}
+                            style={{background:"#E8F5E9", color:"#2E7D32", border:"1px solid #A5D6A7", borderRadius:6, padding:"7px 16px", fontSize:13, fontWeight:500}}>
+                            ✓ Godkend
+                          </button>
+                          <button onClick={()=>setApprovals(a=>({...a,[req.id]:"afvist"}))}
+                            style={{background:"#FFEBEE", color:"#C62828", border:"1px solid #EF9A9A", borderRadius:6, padding:"7px 16px", fontSize:13, fontWeight:500}}>
+                            ✕ Afvis
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{background:status==="godkendt"?"#E8F5E9":"#FFEBEE", color:status==="godkendt"?"#2E7D32":"#C62828", padding:"7px 16px", borderRadius:6, fontSize:13, fontWeight:500}}>
+                          {status==="godkendt"?"✓ Godkendt":"✕ Afvist"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
